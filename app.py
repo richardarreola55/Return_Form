@@ -18,19 +18,7 @@ SUPER_EMAILS = {
     "Ferguson": "bferguson@citadelrs.com",
     "Parada": "iparada@citadelrs.com",
 }
-
-# --- Session state for items (use dict-style keys to avoid clashing with .items() method) ---
-if "items" not in st.session_state:
-    st.session_state["items"] = [
-        {"item_code": "", "description": "", "qty": "", "condition": "Unused"}
-    ]
-
-def add_item():
-    st.session_state["items"].append({"item_code": "", "description": "", "qty": "", "condition": "Unused"})
-
-def remove_item(idx: int):
-    if 0 <= idx < len(st.session_state["items"]):
-        st.session_state["items"].pop(idx)
+    
 
 # --- Form ---
 with st.form("kitted_return_form", clear_on_submit=False):
@@ -59,12 +47,12 @@ with st.form("kitted_return_form", clear_on_submit=False):
 
     
     st.markdown("---")
-    st.subheader("4) Additional Notes")
+    st.subheader("3) Additional Notes")
     reason_for_return = st.text_area("Reason for Return")
     issues_identified = st.text_area("Any Issues Identified")
 
     st.markdown("---")
-    st.subheader("5) Warehouse Acknowledgment (optional - for receiving staff)")
+    st.subheader("4) Warehouse Acknowledgment (optional - for receiving staff)")
     col7, col8 = st.columns(2)
     with col7:
         received_by = st.text_input("Received By")
@@ -86,19 +74,7 @@ def validate_required():
         errors.append("Date of Return is required.")
     if not employee_name:
         errors.append("Employee Name is required.")
-    # Validate at least one numeric quantity
-    valid_qty = False
-    for it in st.session_state["items"]:
-        q = (it.get("qty") or "").strip()
-        if q:
-            try:
-                float(q)
-                valid_qty = True
-                break
-            except ValueError:
-                errors.append(f"Invalid quantity: '{q}'. Use a number.")
-    if not valid_qty:
-        errors.append("At least one returned item with a numeric quantity is required.")
+   
     if not webhook_url:
         errors.append("Webhook URL is not configured.")
     return errors
@@ -133,16 +109,7 @@ if submitted:
                 "employee_name": employee_name,
                 "department": department
             },
-            "items": [
-                {
-                    "item_code": it.get("item_code", "").strip(),
-                    "description": it.get("description", "").strip(),
-                    "qty": float(it["qty"]) if (it.get("qty") and it.get("qty").strip()) else 0.0,
-                    "condition": it.get("condition", "Unused"),
-                }
-                for it in st.session_state["items"]
-                if (it.get("qty") or "").strip()
-            ],
+       
             "notes": {
                 "reason_for_return": reason_for_return,
                 "issues_identified": issues_identified,
