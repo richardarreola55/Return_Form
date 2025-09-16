@@ -12,18 +12,25 @@ st.caption("Submit returned materials from a kitted job. Data will POST to your 
 # Fixed webhook URL (no sidebar input)
 webhook_url = "https://luis7fc.app.n8n.cloud/webhook/ffd78965-ead2-47a3-b1e2-b709c559653e"
 
-# --- Session state for items ---
+# Superintendent -> email mapping
+SUPER_EMAILS = {
+    "Coffee": "mcoffee@citadelrs.com",
+    "Ferguson": "bferguson@citadelrs.com",
+    "Parada": "iparada@citadelrs.com",
+}
+
+# --- Session state for items (use dict-style keys to avoid clashing with .items() method) ---
 if "items" not in st.session_state:
-    st.session_state.items: List[Dict[str, str]] = [
+    st.session_state["items"] = [
         {"item_code": "", "description": "", "qty": "", "condition": "Unused"}
     ]
 
 def add_item():
-    st.session_state.items.append({"item_code": "", "description": "", "qty": "", "condition": "Unused"})
+    st.session_state["items"].append({"item_code": "", "description": "", "qty": "", "condition": "Unused"})
 
 def remove_item(idx: int):
-    if 0 <= idx < len(st.session_state.items):
-        st.session_state.items.pop(idx)
+    if 0 <= idx < len(st.session_state["items"]):
+        st.session_state["items"].pop(idx)
 
 # --- Form ---
 with st.form("kitted_return_form", clear_on_submit=False):
@@ -39,35 +46,32 @@ with st.form("kitted_return_form", clear_on_submit=False):
         date_of_return = st.date_input("Date of Return*", value=datetime.now().date())
         original_sched_date = st.date_input("Original Scheduled Date", value=datetime.now().date())
 
-    # Superintendent dropdown
     super_options = ["Coffee", "Ferguson", "Parada"]
     superintendent = st.selectbox("Superintendent", options=super_options, index=0)
 
     st.markdown("---")
     st.subheader("2) Returned By")
-    col4, col5, col6 = st.columns(3)
+    col4, col5 = st.columns(2)
     with col4:
         employee_name = st.text_input("Employee Name*", placeholder="Jane Doe")
     with col5:
         department = st.selectbox("Department", ["Production", "Assembly", "Field", "Warehouse", "Other"])
-    with col6:
-        supervisor = st.text_input("Supervisor")
 
     st.markdown("---")
     st.subheader("3) Returned Materials")
 
-    # Items table-like editor
-    for idx, row in enumerate(st.session_state.items):
+    # Items table-like editor (use dict-style access to session_state)
+    for idx, row in enumerate(list(st.session_state["items"])):
         with st.expander(f"Item {idx+1}", expanded=True if idx == 0 else False):
             c1, c2, c3, c4 = st.columns([1.2, 2, 1, 1.2])
             with c1:
-                st.session_state.items[idx]["item_code"] = st.text_input("Item Code / Part #", value=row["item_code"], key=f"item_code_{idx}")
+                st.session_state["items"][idx]["item_code"] = st.text_input("Item Code / Part #", value=row.get("item_code",""), key=f"item_code_{idx}")
             with c2:
-                st.session_state.items[idx]["description"] = st.text_input("Description", value=row["description"], key=f"desc_{idx}")
+                st.session_state["items"][idx]["description"] = st.text_input("Description", value=row.get("description",""), key=f"desc_{idx}")
             with c3:
-                st.session_state.items[idx]["qty"] = st.text_input("Qty Returned*", value=row["qty"], key=f"qty_{idx}")
+                st.session_state["items"][idx]["qty"] = st.text_input("Qty Returned*", value=row.get("qty",""), key=f"qty_{idx}")
             with c4:
-                st.session_state.items[idx]["condition"] = st.selectbox("Condition", ["Unused", "Damaged", "Partial"], index=["Unused", "Damaged", "Partial"].index(row["condition"]), key=f"cond_{idx}")
+                st.session_state["items"][idx]["condition"] = st.selectbox("Condition", ["Unused", "Damaged", "Partial"], index=["Unused", "Damaged", "Partial"].index(row.get("condition","Unused")), key=f"cond_{idx}")
             rem_col, _, _, _ = st.columns(4)
             with rem_col:
                 if st.button("Remove Item", key=f"remove_{idx}"):
@@ -92,9 +96,10 @@ with st.form("kitted_return_form", clear_on_submit=False):
         if use_processed_date:
             date_processed = st.date_input("Date Processed", value=datetime.now().date())
 
+    # Submit button (explicit)
     submitted = st.form_submit_button("Submit to Webhook")
 
-# --- Submit handler ---
+# --- Validation & Submit handler ---
 def validate_required():
     errors = []
     if not job_number:
@@ -103,13 +108,12 @@ def validate_required():
         errors.append("Date of Return is required.")
     if not employee_name:
         errors.append("Employee Name is required.")
-    # At least one item with qty
+    # Validate at least one numeric quantity
     valid_qty = False
-    for it in st.session_state.items:
+    for it in st.session_state["items"]:
         q = (it.get("qty") or "").strip()
         if q:
             try:
-                # accept ints/floats as text
                 float(q)
                 valid_qty = True
                 break
@@ -117,7 +121,6 @@ def validate_required():
                 errors.append(f"Invalid quantity: '{q}'. Use a number.")
     if not valid_qty:
         errors.append("At least one returned item with a numeric quantity is required.")
-    # Webhook URL is fixed in code; no UI check needed.
     if not webhook_url:
         errors.append("Webhook URL is not configured.")
     return errors
@@ -128,35 +131,39 @@ if submitted:
         for e in errs:
             st.error(e)
     else:
+        to_email = SUPER_EMAILS.get(superintendent, None)
+
         payload = {
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Return",
-                "version": "1.1.1"
+                "version": "1.2.0"
+            },
+            "routing": {
+                "superintendent": superintendent,
+                "to_email": to_email,
             },
             "job_info": {
                 "job_number": job_number,
                 "project_name": project_name,
                 "lot_number": lot_number,
                 "crew": crew,
-                "superintendent": superintendent,
                 "original_scheduled_date": str(original_sched_date) if original_sched_date else None,
                 "date_of_return": str(date_of_return),
             },
             "returned_by": {
                 "employee_name": employee_name,
-                "department": department,
-                "supervisor": supervisor,
+                "department": department
             },
             "items": [
                 {
                     "item_code": it.get("item_code", "").strip(),
                     "description": it.get("description", "").strip(),
-                    "qty": float(it["qty"]) if (it.get("qty") and it.get("qty").strip()) else 0,
+                    "qty": float(it["qty"]) if (it.get("qty") and it.get("qty").strip()) else 0.0,
                     "condition": it.get("condition", "Unused"),
                 }
-                for it in st.session_state.items
-                if (it.get("qty") or "").strip()  # include only rows with qty
+                for it in st.session_state["items"]
+                if (it.get("qty") or "").strip()
             ],
             "notes": {
                 "reason_for_return": reason_for_return,
@@ -186,4 +193,3 @@ if submitted:
                     st.text(resp.text)
         except requests.exceptions.RequestException as ex:
             st.error(f"Failed to reach webhook: {ex}")
-
