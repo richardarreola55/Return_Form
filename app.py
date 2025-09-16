@@ -42,10 +42,17 @@ with st.form("kitted_return_form", clear_on_submit=False):
     col1, col2, col3 = st.columns(3)
     with col1:
         job_number = st.text_input("Job / Work Order Number*", placeholder="WO-123456")
+        lot_number = st.text_input("Lot Number", placeholder="Lot-001")
     with col2:
         project_name = st.text_input("Customer / Project Name")
+        crew = st.text_input("Crew", placeholder="Crew A / Installer Team 3")
     with col3:
         date_of_return = st.date_input("Date of Return*", value=datetime.now().date())
+        original_sched_date = st.date_input("Original Scheduled Date", value=datetime.now().date())
+
+    # Superintendent dropdown
+    super_options = ["Coffee", "Ferguson", "Parada"]
+    superintendent = st.selectbox("Superintendent", options=super_options, index=0)
 
     st.markdown("---")
     st.subheader("2) Returned By")
@@ -91,7 +98,10 @@ with st.form("kitted_return_form", clear_on_submit=False):
     with col7:
         received_by = st.text_input("Received By")
     with col8:
-        date_processed = st.date_input("Date Processed", value=None, key="date_processed")
+        use_processed_date = st.checkbox("Provide Date Processed")
+        date_processed = None
+        if use_processed_date:
+            date_processed = st.date_input("Date Processed", value=datetime.now().date())
 
     submitted = st.form_submit_button("Submit to Webhook")
 
@@ -132,11 +142,15 @@ if submitted:
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Return",
-                "version": "1.0.0"
+                "version": "1.1.0"
             },
             "job_info": {
                 "job_number": job_number,
                 "project_name": project_name,
+                "lot_number": lot_number,
+                "crew": crew,
+                "superintendent": superintendent,
+                "original_scheduled_date": str(original_sched_date) if original_sched_date else None,
                 "date_of_return": str(date_of_return),
             },
             "returned_by": {
