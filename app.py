@@ -57,29 +57,7 @@ with st.form("kitted_return_form", clear_on_submit=False):
     with col5:
         department = st.selectbox("Department", ["Production", "Assembly", "Field", "Warehouse", "Other"])
 
-    st.markdown("---")
-    st.subheader("3) Returned Materials")
-
-    # Items table-like editor (use dict-style access to session_state)
-    for idx, row in enumerate(list(st.session_state["items"])):
-        with st.expander(f"Item {idx+1}", expanded=True if idx == 0 else False):
-            c1, c2, c3, c4 = st.columns([1.2, 2, 1, 1.2])
-            with c1:
-                st.session_state["items"][idx]["item_code"] = st.text_input("Item Code / Part #", value=row.get("item_code",""), key=f"item_code_{idx}")
-            with c2:
-                st.session_state["items"][idx]["description"] = st.text_input("Description", value=row.get("description",""), key=f"desc_{idx}")
-            with c3:
-                st.session_state["items"][idx]["qty"] = st.text_input("Qty Returned*", value=row.get("qty",""), key=f"qty_{idx}")
-            with c4:
-                st.session_state["items"][idx]["condition"] = st.selectbox("Condition", ["Unused", "Damaged", "Partial"], index=["Unused", "Damaged", "Partial"].index(row.get("condition","Unused")), key=f"cond_{idx}")
-            rem_col, _, _, _ = st.columns(4)
-            with rem_col:
-                if st.button("Remove Item", key=f"remove_{idx}"):
-                    remove_item(idx)
-                    st.experimental_rerun()
-
-    st.button("➕ Add another item", on_click=add_item)
-
+    
     st.markdown("---")
     st.subheader("4) Additional Notes")
     reason_for_return = st.text_area("Reason for Return")
