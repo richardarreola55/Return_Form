@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 from datetime import datetime
@@ -8,20 +9,8 @@ st.set_page_config(page_title="Kitted Job Material Return", page_icon="📦", la
 st.title("📦 Kitted Job Material Return Form")
 st.caption("Submit returned materials from a kitted job. Data will POST to your webhook as JSON.")
 
-# --- Sidebar: Webhook configuration ---
-with st.sidebar:
-    st.header("🔗 Webhook Settings")
-    webhook_url = st.text_input("Webhook URL", placeholder="https://your-webhook-endpoint.example.com", help="Paste your n8n / Zapier / Make / custom webhook URL.")
-    advanced = st.checkbox("Advanced headers (optional)")
-    headers = {}
-    if advanced:
-        st.write("Add optional headers (e.g., Authorization).")
-        # Allow up to 3 custom headers for simplicity
-        for i in range(1, 4):
-            key = st.text_input(f"Header {i} name", key=f"hdr_key_{i}")
-            val = st.text_input(f"Header {i} value", key=f"hdr_val_{i}")
-            if key:
-                headers[key] = val
+# Fixed webhook URL (no sidebar input)
+webhook_url = "https://luis7fc.app.n8n.cloud/webhook/ffd78965-ead2-47a3-b1e2-b709c559653e"
 
 # --- Session state for items ---
 if "items" not in st.session_state:
@@ -128,8 +117,9 @@ def validate_required():
                 errors.append(f"Invalid quantity: '{q}'. Use a number.")
     if not valid_qty:
         errors.append("At least one returned item with a numeric quantity is required.")
+    # Webhook URL is fixed in code; no UI check needed.
     if not webhook_url:
-        errors.append("Webhook URL is required (see sidebar).")
+        errors.append("Webhook URL is not configured.")
     return errors
 
 if submitted:
@@ -142,7 +132,7 @@ if submitted:
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Return",
-                "version": "1.1.0"
+                "version": "1.1.1"
             },
             "job_info": {
                 "job_number": job_number,
@@ -179,7 +169,7 @@ if submitted:
         }
 
         try:
-            resp = requests.post(webhook_url, json=payload, headers=headers, timeout=15)
+            resp = requests.post(webhook_url, json=payload, timeout=15)
             ok = 200 <= resp.status_code < 300
             if ok:
                 st.success("Submitted successfully to webhook ✅")
@@ -196,3 +186,4 @@ if submitted:
                     st.text(resp.text)
         except requests.exceptions.RequestException as ex:
             st.error(f"Failed to reach webhook: {ex}")
+
