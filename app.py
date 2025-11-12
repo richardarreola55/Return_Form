@@ -71,10 +71,8 @@ def validate_required():
     errors = []
     if not job_number:
         errors.append("Job / Work Order Number is required.")
-    if not date_of_return:
-        errors.append("Date of Return is required.")
-        or not date_of_np:
-            errors.append("DATE OF NO PICKUP IS REQUIRED"
+    if not date_of_return or not date_of_np:
+        errors.append("Date of Return and Date of Not Picked Up are required.")
     if not employee_name:
         errors.append("Employee Name is required.")
    
