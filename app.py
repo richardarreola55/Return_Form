@@ -6,8 +6,8 @@ from typing import List, Dict
 
 st.set_page_config(page_title="Kitted Job Material Return", page_icon="📦", layout="wide")
 
-st.title("📦 Kitted Job Material Return Form")
-st.caption("Submit returned materials from a kitted job. Data will POST to your webhook as JSON.")
+st.title("📦 Kitted Job Material Return / NOT picked up Form")
+st.caption("Submit returned materials from a kitted job.")
 
 # Fixed webhook URL (no sidebar input)
 webhook_url = "https://luis7fc.app.n8n.cloud/webhook/ffd78965-ead2-47a3-b1e2-b709c559653e"
@@ -32,18 +32,19 @@ with st.form("kitted_return_form", clear_on_submit=False):
         crew = st.text_input("Crew", placeholder="Crew A / Installer Team 3")
     with col3:
         date_of_return = st.date_input("Date of Return*", value=datetime.now().date())
+        date_of_np = st.date_input("Date NOT PICKED UP*", value=datetime.now().date())
         original_sched_date = st.date_input("Original Scheduled Date", value=datetime.now().date())
 
     super_options = ["Coffee", "Ferguson", "Parada"]
     superintendent = st.selectbox("Superintendent", options=super_options, index=0)
 
     st.markdown("---")
-    st.subheader("2) Returned By")
+    st.subheader("2) Returned By / Not PICKED UP")
     col4, col5 = st.columns(2)
     with col4:
         employee_name = st.text_input("Employee Name*", placeholder="Jane Doe")
     with col5:
-        department = st.selectbox("Department", ["Production", "Assembly", "Field", "Warehouse", "Other"])
+        department = st.selectbox("Department", ["Field", "Warehouse", "Other"])
 
     
     st.markdown("---")
@@ -72,6 +73,8 @@ def validate_required():
         errors.append("Job / Work Order Number is required.")
     if not date_of_return:
         errors.append("Date of Return is required.")
+        or not date_of_np:
+            errors.append("DATE OF NO PICKUP IS REQUIRED"
     if not employee_name:
         errors.append("Employee Name is required.")
    
@@ -104,6 +107,7 @@ if submitted:
                 "crew": crew,
                 "original_scheduled_date": str(original_sched_date) if original_sched_date else None,
                 "date_of_return": str(date_of_return),
+                "date_not_picked_up": str(date_of_np),
             },
             "returned_by": {
                 "employee_name": employee_name,
