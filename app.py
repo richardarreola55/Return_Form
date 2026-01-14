@@ -47,13 +47,16 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     with col3:
         original_sched_date = st.date_input("Original Scheduled Date*", value=datetime.now().date())
 
-        # Conditional date fields
+        # Conditional date field — now optional for all cases
         if "Returned" in event_type:
-            event_date = st.date_input("Date Materials Returned*", value=datetime.now().date())
+            event_date_label = "Date Materials Returned"
+            event_date = st.date_input(event_date_label, value=datetime.now().date())
         elif "Not Picked Up" in event_type:
-            event_date = st.date_input("Date Not Picked Up*", value=datetime.now().date())
+            event_date_label = "Date Not Picked Up"
+            event_date = st.date_input(event_date_label, value=datetime.now().date())
         else:  # Rescheduled
-            event_date = st.date_input("New Scheduled Date*", value=datetime.now().date())
+            event_date_label = "New Scheduled Date"
+            event_date = st.date_input(event_date_label, value=datetime.now().date())
 
     superintendent = st.selectbox("Superintendent", options=list(SUPER_EMAILS.keys()), index=0)
 
@@ -103,8 +106,8 @@ if submitted:
         errors.append("Employee Name is required.")
     if not original_sched_date:
         errors.append("Original Scheduled Date is required.")
-    if not event_date:
-        errors.append("Event date is required.")
+
+    # Event date is now OPTIONAL → no validation check added here
 
     if errors:
         for e in errors:
@@ -124,7 +127,7 @@ if submitted:
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Status",
-                "version": "1.3.0"
+                "version": "1.3.1"
             },
             "routing": {
                 "superintendent": superintendent,
@@ -133,7 +136,7 @@ if submitted:
             "event": {
                 "type": event_key,
                 "type_readable": event_type,
-                "date": str(event_date),
+                "date": str(event_date) if event_date else None,   # can be null now
             },
             "job_info": {
                 "job_number": job_number.strip(),
