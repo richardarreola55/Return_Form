@@ -76,12 +76,12 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     st.subheader("3) Details & Notes")
 
     # Dynamic label for reason
-    reason_label = {
-        "Materials Returned": "Reason for Return",
-        "Partial Picked Up": "Reason for Partial Pickup",
-        "Not Picked Up": "Reason Not Picked Up / Explanation",
-        "Rescheduled / Pushed Out": "Reason for Reschedule / Delay"
-    }[event_type.split(" (")[0]]
+ reason_label = {
+    "Materials Returned": "Reason for Issue",
+    "Partial Picked Up": "Reason for Issue",
+    "Not Picked Up": "Reason Not Picked Up / Explanation",
+    "Rescheduled / Pushed Out": "Reason for Reschedule / Delay"
+}[event_type.split(" (")[0]]
 
     reason = st.text_area(reason_label, height=110)
 
