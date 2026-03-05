@@ -23,17 +23,35 @@ SUPER_EMAILS = {
 with st.form("kitted_job_status_form", clear_on_submit=False):
 
     st.subheader("0) Type of Event")
-    event_type = st.selectbox(
-        "What happened with the kitted materials?",
-        options=[
-            "Materials Returned (crew brought back)",
-            "Partial Picked Up",
-            "Not Picked Up (crew never took them)",
-            "Rescheduled / Pushed Out"
-        ],
-        index=0,
-        help="This selection changes which dates & wording appear below"
-    )
+
+    col_event, col_material = st.columns(2)
+
+    with col_event:
+        event_type = st.selectbox(
+            "What happened with the kitted materials?",
+            options=[
+                "Materials Returned (crew brought back)",
+                "Partial Picked Up",
+                "Not Picked Up (crew never took them)",
+                "Rescheduled / Pushed Out"
+            ],
+            index=0,
+            help="This selection changes which dates & wording appear below"
+        )
+
+    with col_material:
+        material_type = st.selectbox(
+            "Material",
+            options=[
+                "Panels",
+                "Battery",
+                "Rack",
+                "Inverter",
+                "Gateway",
+                "Electrical"
+            ],
+            index=0
+        )
 
     st.markdown("---")
     st.subheader("1) Job Information")
@@ -48,7 +66,6 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     with col3:
         original_sched_date = st.date_input("Original Scheduled Date*", value=datetime.now().date())
 
-        # Conditional date field — optional for all cases
         if "Returned" in event_type:
             event_date_label = "Date of Issue"
             event_date = st.date_input(event_date_label, value=datetime.now().date())
@@ -58,7 +75,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
         elif "Not Picked Up" in event_type:
             event_date_label = "Date Not Picked Up"
             event_date = st.date_input(event_date_label, value=datetime.now().date())
-        else:  # Rescheduled
+        else:
             event_date_label = "New Scheduled Date"
             event_date = st.date_input(event_date_label, value=datetime.now().date())
 
@@ -66,6 +83,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
 
     st.markdown("---")
     st.subheader("2) Reported By")
+
     col4, col5 = st.columns(2)
     with col4:
         employee_name = st.text_input("Employee Name*", placeholder="Jane Doe")
@@ -75,7 +93,6 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     st.markdown("---")
     st.subheader("3) Details & Notes")
 
-    # Dynamic label for reason
     reason_label = {
         "Materials Returned": "Reason for Issue",
         "Partial Picked Up": "Reason for Issue",
@@ -89,6 +106,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
 
     st.markdown("---")
     st.subheader("4) Warehouse Acknowledgment (optional – receiving / kitting staff)")
+
     col7, col8 = st.columns(2)
     with col7:
         received_by = st.text_input("Received / Processed By")
@@ -104,81 +122,102 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
 #               Validation & Submit
 # ────────────────────────────────────────────────
 if submitted:
+
     errors = []
+
     if not job_number.strip():
         errors.append("Job / Work Order Number is required.")
+
     if not employee_name.strip():
         errors.append("Employee Name is required.")
+
     if not original_sched_date:
         errors.append("Original Scheduled Date is required.")
-
-    # Event date is OPTIONAL → no validation check
 
     if errors:
         for e in errors:
             st.error(e)
+
     else:
+
         to_email = SUPER_EMAILS.get(superintendent)
 
-        # Normalize event type for payload & email
         event_map = {
             "Materials Returned": "returned",
             "Partial Picked Up": "partial_pickup",
             "Not Picked Up": "not_picked_up",
             "Rescheduled / Pushed Out": "rescheduled"
         }
+
         event_key = event_map[event_type.split(" (")[0]]
 
         payload = {
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Status",
-                "version": "1.3.2"
+                "version": "1.3.3"
             },
+
             "routing": {
                 "superintendent": superintendent,
-                "to_email": to_email,
+                "to_email": to_email
             },
+
             "event": {
                 "type": event_key,
                 "type_readable": event_type,
-                "date": str(event_date) if event_date else None,
+                "material": material_type,
+                "date": str(event_date) if event_date else None
             },
+
             "job_info": {
                 "job_number": job_number.strip(),
                 "project_name": project_name.strip(),
                 "lot_number": lot_number.strip(),
                 "crew": crew.strip(),
-                "original_scheduled_date": str(original_sched_date),
+                "original_scheduled_date": str(original_sched_date)
             },
+
             "reported_by": {
                 "employee_name": employee_name.strip(),
-                "department": department,
+                "department": department
             },
+
             "notes": {
                 "reason": reason.strip(),
-                "issues": issues.strip(),
+                "issues": issues.strip()
             },
+
             "warehouse_ack": {
                 "processed_by": received_by.strip(),
-                "date_processed": str(date_processed) if date_processed else None,
+                "date_processed": str(date_processed) if date_processed else None
             }
         }
 
         try:
+
             resp = requests.post(webhook_url, json=payload, timeout=15)
+
             if 200 <= resp.status_code < 300:
+
                 st.success("Submitted successfully ✅")
+
                 with st.expander("Payload (JSON)"):
                     st.code(payload, language="json")
+
                 with st.expander("Webhook response"):
                     try:
                         st.json(resp.json())
-                    except Exception:
+                    except:
                         st.text(resp.text)
+
             else:
+
                 st.error(f"Webhook error – status {resp.status_code}")
+
                 with st.expander("Response"):
                     st.text(resp.text)
+
         except requests.exceptions.RequestException as ex:
+
             st.error(f"Could not reach webhook: {ex}")
