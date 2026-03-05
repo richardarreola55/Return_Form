@@ -78,8 +78,8 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
         )
 
     with col_qty:
-        quantity_returned = st.number_input(
-            "Qty Returned",
+        quantity = st.number_input(
+            "Qty",
             min_value=0,
             step=1,
             value=0
