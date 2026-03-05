@@ -48,7 +48,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     with col3:
         original_sched_date = st.date_input("Original Scheduled Date*", value=datetime.now().date())
 
-        # Conditional date field — now optional for all cases
+        # Conditional date field — optional for all cases
         if "Returned" in event_type:
             event_date_label = "Date of Issue"
             event_date = st.date_input(event_date_label, value=datetime.now().date())
@@ -76,12 +76,12 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     st.subheader("3) Details & Notes")
 
     # Dynamic label for reason
- reason_label = {
-    "Materials Returned": "Reason for Issue",
-    "Partial Picked Up": "Reason for Issue",
-    "Not Picked Up": "Reason Not Picked Up / Explanation",
-    "Rescheduled / Pushed Out": "Reason for Reschedule / Delay"
-}[event_type.split(" (")[0]]
+    reason_label = {
+        "Materials Returned": "Reason for Issue",
+        "Partial Picked Up": "Reason for Issue",
+        "Not Picked Up": "Reason Not Picked Up / Explanation",
+        "Rescheduled / Pushed Out": "Reason for Reschedule / Delay"
+    }[event_type.split(" (")[0]]
 
     reason = st.text_area(reason_label, height=110)
 
@@ -111,6 +111,8 @@ if submitted:
         errors.append("Employee Name is required.")
     if not original_sched_date:
         errors.append("Original Scheduled Date is required.")
+
+    # Event date is OPTIONAL → no validation check
 
     if errors:
         for e in errors:
@@ -172,7 +174,7 @@ if submitted:
                 with st.expander("Webhook response"):
                     try:
                         st.json(resp.json())
-                    except:
+                    except Exception:
                         st.text(resp.text)
             else:
                 st.error(f"Webhook error – status {resp.status_code}")
