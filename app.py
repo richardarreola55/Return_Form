@@ -121,7 +121,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     # ------------------------------------------------
     # 4) Warehouse Acknowledgment
     # ------------------------------------------------
-    st.subheader("4) Warehouse Acknowledgment (optional – receiving / kitting staff)")
+    st.subheader("4) Warehouse Acknowledgment")
 
     # Updated workflow order: Returned in App → Received By → Date Processed
     colA, colB, colC = st.columns([1, 2, 2])
