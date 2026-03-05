@@ -27,6 +27,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
         "What happened with the kitted materials?",
         options=[
             "Materials Returned (crew brought back)",
+            "Partial Picked Up",
             "Not Picked Up (crew never took them)",
             "Rescheduled / Pushed Out"
         ],
@@ -49,7 +50,10 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
 
         # Conditional date field — now optional for all cases
         if "Returned" in event_type:
-            event_date_label = "Date Materials Returned"
+            event_date_label = "Date of Issue"
+            event_date = st.date_input(event_date_label, value=datetime.now().date())
+        elif "Partial Picked Up" in event_type:
+            event_date_label = "Date of Issue"
             event_date = st.date_input(event_date_label, value=datetime.now().date())
         elif "Not Picked Up" in event_type:
             event_date_label = "Date Not Picked Up"
@@ -74,6 +78,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     # Dynamic label for reason
     reason_label = {
         "Materials Returned": "Reason for Return",
+        "Partial Picked Up": "Reason for Partial Pickup",
         "Not Picked Up": "Reason Not Picked Up / Explanation",
         "Rescheduled / Pushed Out": "Reason for Reschedule / Delay"
     }[event_type.split(" (")[0]]
@@ -107,8 +112,6 @@ if submitted:
     if not original_sched_date:
         errors.append("Original Scheduled Date is required.")
 
-    # Event date is now OPTIONAL → no validation check added here
-
     if errors:
         for e in errors:
             st.error(e)
@@ -118,6 +121,7 @@ if submitted:
         # Normalize event type for payload & email
         event_map = {
             "Materials Returned": "returned",
+            "Partial Picked Up": "partial_pickup",
             "Not Picked Up": "not_picked_up",
             "Rescheduled / Pushed Out": "rescheduled"
         }
@@ -127,7 +131,7 @@ if submitted:
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Status",
-                "version": "1.3.1"
+                "version": "1.3.2"
             },
             "routing": {
                 "superintendent": superintendent,
@@ -136,7 +140,7 @@ if submitted:
             "event": {
                 "type": event_key,
                 "type_readable": event_type,
-                "date": str(event_date) if event_date else None,   # can be null now
+                "date": str(event_date) if event_date else None,
             },
             "job_info": {
                 "job_number": job_number.strip(),
