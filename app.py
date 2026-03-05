@@ -191,7 +191,7 @@ if submitted:
                 "type": event_key,
                 "type_readable": event_type,
                 "material": material_type,
-                "quantity_returned": int(quantity_returned),
+                "quantity": int(quantity),
                 "date": str(event_date) if event_date else None
             },
 
