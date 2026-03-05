@@ -7,19 +7,14 @@ st.set_page_config(page_title="Kitted Job Material Status", page_icon="📦", la
 st.title("📦 Kitted Job Material Status Form")
 st.caption("Report returned materials, no-pickup situations, or rescheduled jobs.")
 
-# Fixed webhook URL
 webhook_url = "https://luis7fc.app.n8n.cloud/webhook/ffd78965-ead2-47a3-b1e2-b709c559653e"
 
-# Superintendent → email mapping
 SUPER_EMAILS = {
     "Coffee":    "mcoffee@citadelrs.com",
     "Ferguson":  "bferguson@citadelrs.com",
     "Parada":    "iparada@citadelrs.com",
 }
 
-# ────────────────────────────────────────────────
-#               Main Form
-# ────────────────────────────────────────────────
 with st.form("kitted_job_status_form", clear_on_submit=False):
 
     # ------------------------------------------------
@@ -67,6 +62,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
         material_type = st.selectbox(
             "Material",
             options=[
+                "Full Kit",
                 "Panels",
                 "Battery",
                 "Rack",
@@ -82,21 +78,19 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
             "Qty",
             min_value=0,
             step=1,
-            value=0
+            value=0,
+            disabled=(material_type == "Full Kit")
         )
 
     if "Returned" in event_type:
         event_date_label = "Date of Issue"
         event_date = st.date_input(event_date_label, value=datetime.now().date())
-
     elif "Partial Picked Up" in event_type:
         event_date_label = "Date of Issue"
         event_date = st.date_input(event_date_label, value=datetime.now().date())
-
     elif "Not Picked Up" in event_type:
         event_date_label = "Date Not Picked Up"
         event_date = st.date_input(event_date_label, value=datetime.now().date())
-
     else:
         event_date_label = "New Scheduled Date"
         event_date = st.date_input(event_date_label, value=datetime.now().date())
@@ -123,7 +117,6 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     # ------------------------------------------------
     st.subheader("4) Warehouse Acknowledgment")
 
-    # Updated workflow order: Returned in App → Received By → Date Processed
     colA, colB, colC = st.columns([1, 2, 2])
 
     with colA:
@@ -141,9 +134,9 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     submitted = st.form_submit_button("Submit", use_container_width=True, type="primary")
 
 
-# ────────────────────────────────────────────────
-#               Validation & Submit
-# ────────────────────────────────────────────────
+# ------------------------------------------------
+# Validation & Submit
+# ------------------------------------------------
 if submitted:
 
     errors = []
@@ -156,6 +149,14 @@ if submitted:
 
     if not original_sched_date:
         errors.append("Original Scheduled Date is required.")
+
+    # Qty validation:
+    # - If Full Kit → no qty needed
+    # - Otherwise → require qty > 0 EXCEPT when event is Not Picked Up (nothing was taken)
+    normalized_event = event_type.split(" (")[0]
+    if material_type != "Full Kit" and normalized_event != "Not Picked Up":
+        if int(quantity) <= 0:
+            errors.append("Qty must be greater than 0 (unless Material is Full Kit, or Event is Not Picked Up).")
 
     if errors:
         for e in errors:
@@ -172,29 +173,25 @@ if submitted:
             "Rescheduled / Pushed Out": "rescheduled"
         }
 
-        event_key = event_map[event_type.split(" (")[0]]
+        event_key = event_map[normalized_event]
 
         payload = {
-
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Status",
-                "version": "1.3.8"
+                "version": "1.3.9"
             },
-
             "routing": {
                 "superintendent": superintendent,
                 "to_email": to_email
             },
-
             "event": {
                 "type": event_key,
                 "type_readable": event_type,
                 "material": material_type,
-                "quantity": int(quantity),
-                "date": str(event_date) if event_date else None
+                "quantity": None if material_type == "Full Kit" else int(quantity),
+                "date": str(event_date)
             },
-
             "job_info": {
                 "job_number": job_number.strip(),
                 "project_name": project_name.strip(),
@@ -202,12 +199,10 @@ if submitted:
                 "crew": crew.strip(),
                 "original_scheduled_date": str(original_sched_date)
             },
-
             "reported_by": {
                 "employee_name": employee_name.strip(),
                 "department": department
             },
-
             "warehouse_ack": {
                 "returned_in_app": returned_in_app,
                 "processed_by": received_by.strip(),
@@ -216,11 +211,9 @@ if submitted:
         }
 
         try:
-
             resp = requests.post(webhook_url, json=payload, timeout=15)
 
             if 200 <= resp.status_code < 300:
-
                 st.success("Submitted successfully ✅")
 
                 with st.expander("Payload (JSON)"):
@@ -231,14 +224,10 @@ if submitted:
                         st.json(resp.json())
                     except:
                         st.text(resp.text)
-
             else:
-
                 st.error(f"Webhook error – status {resp.status_code}")
-
                 with st.expander("Response"):
                     st.text(resp.text)
 
         except requests.exceptions.RequestException as ex:
-
             st.error(f"Could not reach webhook: {ex}")
