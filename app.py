@@ -23,9 +23,9 @@ SUPER_EMAILS = {
 with st.form("kitted_job_status_form", clear_on_submit=False):
 
     # ------------------------------------------------
-    # 0) Job Information
+    # 1) Job Information
     # ------------------------------------------------
-    st.subheader("0) Job Information")
+    st.subheader("1) Job Information")
 
     col1, col2, col3 = st.columns(3)
 
@@ -45,9 +45,9 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     st.markdown("---")
 
     # ------------------------------------------------
-    # 1) Type of Event
+    # 2) Type of Event
     # ------------------------------------------------
-    st.subheader("1) Type of Event")
+    st.subheader("2) Type of Event")
 
     col_event, col_material, col_qty = st.columns([2, 2, 1])
 
@@ -106,9 +106,9 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     st.markdown("---")
 
     # ------------------------------------------------
-    # 2) Reported By
+    # 3) Reported By
     # ------------------------------------------------
-    st.subheader("2) Reported By")
+    st.subheader("3) Reported By")
 
     col4, col5 = st.columns(2)
 
@@ -123,7 +123,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     # ------------------------------------------------
     # 4) Warehouse Acknowledgment
     # ------------------------------------------------
-    st.subheader("4) Warehouse Acknowledgment (optional – receiving / kitting staff)")
+    st.subheader("4) Warehouse Acknowledgment")
 
     col7, col8 = st.columns(2)
 
