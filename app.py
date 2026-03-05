@@ -7,14 +7,19 @@ st.set_page_config(page_title="Kitted Job Material Status", page_icon="📦", la
 st.title("📦 Kitted Job Material Status Form")
 st.caption("Report returned materials, no-pickup situations, or rescheduled jobs.")
 
+# Fixed webhook URL
 webhook_url = "https://luis7fc.app.n8n.cloud/webhook/ffd78965-ead2-47a3-b1e2-b709c559653e"
 
+# Superintendent → email mapping
 SUPER_EMAILS = {
     "Coffee":    "mcoffee@citadelrs.com",
     "Ferguson":  "bferguson@citadelrs.com",
     "Parada":    "iparada@citadelrs.com",
 }
 
+# ────────────────────────────────────────────────
+#               Main Form
+# ────────────────────────────────────────────────
 with st.form("kitted_job_status_form", clear_on_submit=False):
 
     # ------------------------------------------------
@@ -44,7 +49,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     # ------------------------------------------------
     st.subheader("1) Type of Event")
 
-    col_event, col_material, col_qty = st.columns([2,2,1])
+    col_event, col_material, col_qty = st.columns([2, 2, 1])
 
     with col_event:
         event_type = st.selectbox(
@@ -62,14 +67,14 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
         material_type = st.selectbox(
             "Material",
             options=[
-                "Full Kit",
                 "Panels",
                 "Battery",
                 "Rack",
                 "Inverter",
                 "Gateway",
                 "Electrical"
-            ]
+            ],
+            index=0
         )
 
     with col_qty:
@@ -77,8 +82,7 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
             "Qty Returned",
             min_value=0,
             step=1,
-            value=0,
-            disabled=(material_type == "Full Kit")
+            value=0
         )
 
     if "Returned" in event_type:
@@ -119,7 +123,8 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     # ------------------------------------------------
     st.subheader("4) Warehouse Acknowledgment (optional – receiving / kitting staff)")
 
-    colA, colB, colC = st.columns([1,2,2])
+    # Updated workflow order: Returned in App → Received By → Date Processed
+    colA, colB, colC = st.columns([1, 2, 2])
 
     with colA:
         returned_in_app = st.checkbox("Returned in App")
@@ -135,9 +140,10 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
 
     submitted = st.form_submit_button("Submit", use_container_width=True, type="primary")
 
-# ------------------------------------------------
-# Validation & Submit
-# ------------------------------------------------
+
+# ────────────────────────────────────────────────
+#               Validation & Submit
+# ────────────────────────────────────────────────
 if submitted:
 
     errors = []
@@ -173,7 +179,7 @@ if submitted:
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Status",
-                "version": "1.3.9"
+                "version": "1.3.8"
             },
 
             "routing": {
@@ -185,7 +191,7 @@ if submitted:
                 "type": event_key,
                 "type_readable": event_type,
                 "material": material_type,
-                "quantity_returned": None if material_type == "Full Kit" else int(quantity_returned),
+                "quantity_returned": int(quantity_returned),
                 "date": str(event_date) if event_date else None
             },
 
@@ -210,6 +216,7 @@ if submitted:
         }
 
         try:
+
             resp = requests.post(webhook_url, json=payload, timeout=15)
 
             if 200 <= resp.status_code < 300:
@@ -226,10 +233,12 @@ if submitted:
                         st.text(resp.text)
 
             else:
+
                 st.error(f"Webhook error – status {resp.status_code}")
 
                 with st.expander("Response"):
                     st.text(resp.text)
 
         except requests.exceptions.RequestException as ex:
+
             st.error(f"Could not reach webhook: {ex}")
