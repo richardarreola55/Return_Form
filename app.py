@@ -7,25 +7,20 @@ st.set_page_config(page_title="Kitted Job Material Status", page_icon="📦", la
 st.title("📦 Kitted Job Material Status Form")
 st.caption("Report returned materials, no-pickup situations, or rescheduled jobs.")
 
-# Fixed webhook URL
 webhook_url = "https://luis7fc.app.n8n.cloud/webhook/ffd78965-ead2-47a3-b1e2-b709c559653e"
 
-# Superintendent → email mapping
 SUPER_EMAILS = {
     "Coffee":    "mcoffee@citadelrs.com",
     "Ferguson":  "bferguson@citadelrs.com",
     "Parada":    "iparada@citadelrs.com",
 }
 
-# ────────────────────────────────────────────────
-#               Main Form
-# ────────────────────────────────────────────────
 with st.form("kitted_job_status_form", clear_on_submit=False):
 
     # ------------------------------------------------
-    # 1) Job Information
+    # 0) Job Information
     # ------------------------------------------------
-    st.subheader("1) Job Information")
+    st.subheader("0) Job Information")
 
     col1, col2, col3 = st.columns(3)
 
@@ -45,20 +40,20 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     st.markdown("---")
 
     # ------------------------------------------------
-    # 2) Type of Event
+    # 1) Type of Event
     # ------------------------------------------------
-    st.subheader("2) Type of Event")
+    st.subheader("1) Type of Event")
 
-    col_event, col_material, col_qty = st.columns([2, 2, 1])
+    col_event, col_material, col_qty = st.columns([2,2,1])
 
     with col_event:
         event_type = st.selectbox(
             "What happened with the kitted materials?",
             options=[
                 "Materials Returned (crew brought back)",
-                "Partial Pick Up",
-                "Not Picked Up",
-                "Rescheduled"
+                "Partial Picked Up",
+                "Not Picked Up (crew never took them)",
+                "Rescheduled / Pushed Out"
             ],
             index=0
         )
@@ -67,24 +62,23 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
         material_type = st.selectbox(
             "Material",
             options=[
+                "Full Kit",
                 "Panels",
                 "Battery",
                 "Rack",
                 "Inverter",
                 "Gateway",
-                "Electrical",
-                "Full Kit"
-            ],
-            index=0
+                "Electrical"
+            ]
         )
 
     with col_qty:
         quantity_returned = st.number_input(
-            "Qty",
+            "Qty Returned",
             min_value=0,
             step=1,
             value=0,
-            help="Enter the quantity for the selected material."
+            disabled=(material_type == "Full Kit")
         )
 
     if "Returned" in event_type:
@@ -106,9 +100,9 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     st.markdown("---")
 
     # ------------------------------------------------
-    # 3) Reported By
+    # 2) Reported By
     # ------------------------------------------------
-    st.subheader("3) Reported By")
+    st.subheader("2) Reported By")
 
     col4, col5 = st.columns(2)
 
@@ -123,26 +117,27 @@ with st.form("kitted_job_status_form", clear_on_submit=False):
     # ------------------------------------------------
     # 4) Warehouse Acknowledgment
     # ------------------------------------------------
-    st.subheader("4) Warehouse Acknowledgment")
+    st.subheader("4) Warehouse Acknowledgment (optional – receiving / kitting staff)")
 
-    col7, col8 = st.columns(2)
+    colA, colB, colC = st.columns([1,2,2])
 
-    with col7:
+    with colA:
+        returned_in_app = st.checkbox("Returned in App")
+
+    with colB:
         received_by = st.text_input("Received / Processed By")
 
-    with col8:
+    with colC:
         use_processed_date = st.checkbox("Provide Date Processed")
         date_processed = None
-
         if use_processed_date:
             date_processed = st.date_input("Date Processed", value=datetime.now().date())
 
     submitted = st.form_submit_button("Submit", use_container_width=True, type="primary")
 
-
-# ────────────────────────────────────────────────
-#               Validation & Submit
-# ────────────────────────────────────────────────
+# ------------------------------------------------
+# Validation & Submit
+# ------------------------------------------------
 if submitted:
 
     errors = []
@@ -178,7 +173,7 @@ if submitted:
             "meta": {
                 "submitted_at": datetime.utcnow().isoformat() + "Z",
                 "app": "Kitted Job Material Status",
-                "version": "1.3.6"
+                "version": "1.3.9"
             },
 
             "routing": {
@@ -190,7 +185,7 @@ if submitted:
                 "type": event_key,
                 "type_readable": event_type,
                 "material": material_type,
-                "quantity_returned": int(quantity_returned),
+                "quantity_returned": None if material_type == "Full Kit" else int(quantity_returned),
                 "date": str(event_date) if event_date else None
             },
 
@@ -208,13 +203,13 @@ if submitted:
             },
 
             "warehouse_ack": {
+                "returned_in_app": returned_in_app,
                 "processed_by": received_by.strip(),
                 "date_processed": str(date_processed) if date_processed else None
             }
         }
 
         try:
-
             resp = requests.post(webhook_url, json=payload, timeout=15)
 
             if 200 <= resp.status_code < 300:
@@ -231,12 +226,10 @@ if submitted:
                         st.text(resp.text)
 
             else:
-
                 st.error(f"Webhook error – status {resp.status_code}")
 
                 with st.expander("Response"):
                     st.text(resp.text)
 
         except requests.exceptions.RequestException as ex:
-
             st.error(f"Could not reach webhook: {ex}")
